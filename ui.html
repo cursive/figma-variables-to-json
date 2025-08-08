@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            margin: 0;
+            padding: 16px;
+            background-color: #eeeeee;
+            color: #333;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .json-output {
+            background-color: #eeeeee;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 11px;
+            line-height: 1.3;
+            height: 280px;
+            overflow-y: auto;
+            user-select: all;
+            display: none;
+        }
+
+        .header {
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0 0 4px 0;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: #666;
+            margin: 0;
+        }
+
+        .run-button {
+            background-color: #18a0fb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 16px;
+            width: 100%;
+        }
+
+        .run-button:hover {
+            background-color: #0d8ce0;
+        }
+
+        .run-button:active {
+            background-color: #0b7bc7;
+        }
+
+        .run-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+
+
+        .copy-button {
+            background-color: #18a0fb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .copy-button:hover {
+            background-color: #0d8ce0;
+        }
+
+        .copy-button:active {
+            background-color: #0b7bc7;
+        }
+
+        .status {
+            margin-top: 8px;
+            font-size: 11px;
+            color: #666;
+        }
+
+        .instructions {
+            background-color: #f0f8ff;
+            border: 1px solid #d0e7ff;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .instructions h4 {
+            margin: 0 0 8px 0;
+            color: #0066cc;
+        }
+
+        .instructions ul {
+            margin: 0;
+            padding-left: 16px;
+        }
+
+        .instructions li {
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">Variables JSON Converter</div>
+            <div class="subtitle">Convert Figma variables to nested JSON</div>
+        </div>
+
+        <div class="instructions">
+            <h4>How it works:</h4>
+            <ul>
+                <li>Processes all variables in your Figma file</li>
+                <li>Creates a 4-level hierarchy: Collection → Mode → Group → Variable</li>
+                <li>Resolves variable references to their full paths</li>
+                <li>Converts colors to hex format</li>
+            </ul>
+        </div>
+
+        <button id="run-button" class="run-button" onclick="runPlugin()">Run Plugin</button>
+
+        <div id="json-output" class="json-output">Click "Run Plugin" to generate JSON...</div>
+
+        <button id="copy-button" class="copy-button" onclick="copyToClipboard()">Copy to Clipboard</button>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        // Listen for messages from the main plugin
+        window.onmessage = async (event) => {
+            const message = event.data.pluginMessage;
+
+            if (message && message.type === 'json-output') {
+                document.getElementById('json-output').style.display = 'block';
+                document.getElementById('copy-button').style.display = 'inline-block';
+                document.getElementById('json-output').textContent = message.json;
+                document.getElementById('status').textContent = 'JSON generated successfully!';
+                document.getElementById('run-button').disabled = false;
+                document.getElementById('run-button').textContent = 'Run Plugin';
+            }
+        };
+
+        // Run plugin function
+        function runPlugin() {
+            const button = document.getElementById('run-button');
+            button.disabled = true;
+            button.textContent = 'Processing...';
+
+            document.getElementById('status').textContent = 'Processing variables...';
+            document.getElementById('json-output').style.display = 'none';
+            document.getElementById('copy-button').style.display = 'none';
+
+            // Send message to main plugin to run
+            parent.postMessage({ pluginMessage: { type: 'run-plugin' } }, '*');
+        }
+
+        // Copy to clipboard function using text selection
+        function copyToClipboard() {
+            const jsonText = document.getElementById('json-output').textContent;
+
+            try {
+                // Create a temporary textarea element
+                const textarea = document.createElement('textarea');
+                textarea.value = jsonText;
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-9999px';
+                textarea.style.top = '-9999px';
+                document.body.appendChild(textarea);
+
+                // Select and copy the text
+                textarea.select();
+                textarea.setSelectionRange(0, 99999); // For mobile devices
+
+                // Try to copy using document.execCommand (fallback)
+                const successful = document.execCommand('copy');
+
+                // Remove the temporary textarea
+                document.body.removeChild(textarea);
+
+                if (successful) {
+                    document.getElementById('status').textContent = 'Copied to clipboard!';
+
+                    // Reset status after 2 seconds
+                    setTimeout(() => {
+                        document.getElementById('status').textContent = '';
+                    }, 2000);
+                } else {
+                    // Fallback: select the text in the output div
+                    const outputDiv = document.getElementById('json-output');
+                    const range = document.createRange();
+                    range.selectNodeContents(outputDiv);
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+
+                    document.getElementById('status').textContent = 'Text selected - press Ctrl+C to copy';
+
+                    // Reset status after 3 seconds
+                    setTimeout(() => {
+                        document.getElementById('status').textContent = '';
+                        selection.removeAllRanges();
+                    }, 3000);
+                }
+            } catch (err) {
+                // Final fallback: just select the text
+                const outputDiv = document.getElementById('json-output');
+                outputDiv.focus();
+                outputDiv.select();
+
+                document.getElementById('status').textContent = 'Text selected - press Ctrl+C to copy';
+
+                setTimeout(() => {
+                    document.getElementById('status').textContent = '';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+
+</html>
